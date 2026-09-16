@@ -20,7 +20,7 @@ All live calls use `TOMAH_API_BASE_URL` and the types in `lib/api/types.ts`.
 | `POST /public/quotes` | `QuoteCreateRequest` → `QuoteCreateResponse` |
 | `POST /public/wholesale-applications` | `WholesaleApplicationRequest` → `WholesaleApplicationResponse` |
 
-There are no intentional endpoint deviations. Exact fields live in `lib/api/types.ts`. Live browser writes and tracking reads pass through `/api/storefront/public/*`, a transparent Worker-compatible fetch proxy that adds no business logic and keeps deployment configuration out of the client bundle.
+There are no intentional endpoint deviations. Exact fields live in `lib/api/types.ts`. Live browser writes and tracking reads pass through `/api/storefront/public/*`, a transparent Next.js Route Handler proxy that adds no business logic and keeps deployment configuration out of the client bundle.
 
 ## Environment
 
@@ -28,21 +28,25 @@ There are no intentional endpoint deviations. Exact fields live in `lib/api/type
 - `TOMAH_API_MODE`: `mock` or `live`; defaults to `mock`.
 - `TOMAH_PUBLIC_SITE_URL`: canonical storefront origin for metadata, sitemap and callbacks.
 
-Run the demo with `TOMAH_API_MODE=mock npm run dev`. Flip to live by setting `TOMAH_API_MODE=live` and `TOMAH_API_BASE_URL` in the Worker environment.
+Run the demo with `TOMAH_API_MODE=mock npm run dev`. Flip to live by setting `TOMAH_API_MODE=live` and `TOMAH_API_BASE_URL` in the Vercel project's environment.
 
 ## Build and deployment
 
-- Node: `>=22.13.0`
-- Build: `npm run build`
-- Worker entry: `dist/server/index.js`
-- Worker config: `dist/server/wrangler.json`
-- Client assets: `dist/client`
+Standard Next.js app deployed to Vercel as the `tomah` project (root
+directory `apps/storefront`) — see [`docs/DEPLOY.md`](DEPLOY.md) for the full
+setup. It owns the primary domain and reverse-proxies `/admin/*` and
+`/api/*`/`/uploads/*` to the two other Vercel projects (admin dashboard,
+admin API), so end users only ever see one origin.
 
-The Worker needs outbound HTTPS access to the API. There are no D1 or R2 bindings and no raw TCP access.
+- Node: `>=20`
+- Build: `npm run build`
+- Deployment target: Vercel (Next.js preset, zero extra config)
 
 ## Origins and payments
 
-Current intended origin: `https://tomah-international.tarantulla-co.chatgpt.site`. Add the final custom production origin when known. The browser integration uses a same-origin proxy.
+Production origin: `https://tomah.vercel.app` (or a custom domain attached to
+the `tomah` Vercel project — update `TOMAH_PUBLIC_SITE_URL` to match). The
+browser integration uses a same-origin proxy.
 
 Stripe callback path: `/checkout/callback` (Stripe's PaymentIntent `return_url` after `confirmPayment`). Whitelist `${TOMAH_PUBLIC_SITE_URL}/checkout/callback`. The browser never marks an order paid; it re-fetches order status after the API's `/public/payments/stripe/webhook` receives `payment_intent.succeeded`.
 

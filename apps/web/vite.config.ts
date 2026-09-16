@@ -5,6 +5,10 @@ import react from "@vitejs/plugin-react";
 // In production, serve the built assets behind a reverse proxy that routes
 // /api/* to the API service.
 export default defineConfig({
+  // Served under tomah.vercel.app/admin/* in production (see
+  // apps/storefront/next.config.ts rewrites), so assets/routes must be
+  // rooted at /admin instead of /.
+  base: "/admin/",
   plugins: [react()],
   server: {
     port: 5173,

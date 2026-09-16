@@ -5,7 +5,7 @@ wholesale bulk food (quote-based).
 
 | Path              | App                                             | Stack |
 | ----------------- | ----------------------------------------------- | ----- |
-| `apps/storefront` | Customer-facing storefront (separate developer) | Vite / `vinext` (React 19) |
+| `apps/storefront` | Customer-facing storefront | Next.js (React 19) |
 | `apps/web`        | Owner/admin dashboard                           | React 18 + TS + Vite |
 | `apps/api`        | Admin REST API                                  | Node + Express + TS (one Vercel serverless fn in prod) |
 | `packages/db`     | **Shared** data layer                          | PostgreSQL + Prisma |
@@ -86,7 +86,7 @@ Password for every seeded user: **`Tomah!2026`**
 ## Repository layout
 
 ```
-apps/storefront/     Customer site — Vite/vinext, React 19 (separate developer)
+apps/storefront/     Customer site — Next.js, React 19
 packages/db/         Prisma schema, generated client, seed  (@tomah/db)
   prisma/schema.prisma   <- shared data model, every app reads this
 apps/api/            Express REST API                        (@tomah/api)

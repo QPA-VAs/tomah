@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Tomah International — monorepo: customer storefront (apps/storefront), owner/admin dashboard (apps/web + apps/api), shared data layer (packages/db)",
-  "//workspaces": "apps/storefront is intentionally NOT a workspace — it is a standalone Vite/vinext app on React 19 with its own lockfile. Vercel builds it with its own `npm install` rooted at apps/storefront.",
+  "//workspaces": "apps/storefront is intentionally NOT a workspace — it is a standalone Next.js app on React 19 with its own lockfile. Vercel builds it with its own `npm install` rooted at apps/storefront.",
   "workspaces": [
     "packages/*",
     "apps/api",

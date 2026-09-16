@@ -6,7 +6,7 @@ import { api, ApiError } from '@/lib/api';
 import { ProductBuy } from '@/components/storefront/product-buy';
 import { CATEGORY_META } from '@/lib/categories';
 
-const site = process.env.TOMAH_PUBLIC_SITE_URL || 'https://tomah-international.tarantulla-co.chatgpt.site';
+const site = process.env.TOMAH_PUBLIC_SITE_URL || 'https://tomah.vercel.app';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   try {

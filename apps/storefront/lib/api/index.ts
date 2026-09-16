@@ -32,9 +32,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(target, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
-    // Only set `cache` for non-GET (no-store). The Workers/vinext runtime this
-    // app deploys to rejects the literal "default" cache mode Next accepts, so
-    // GETs must omit the option entirely rather than spell out the default.
+    // Only set `cache` for non-GET (no-store); omit it on GETs to use Next's default.
     ...(init?.method && init.method !== 'GET' ? { cache: 'no-store' as const } : {}),
   });
   if (!response.ok) {
@@ -62,9 +60,9 @@ export async function forwardPublicRequest(request: Request, path: string[]) {
     body: ['GET', 'HEAD'].includes(request.method) ? undefined : await request.text(),
     cache: 'no-store',
   });
-  // Re-wrap: a raw fetch() Response carries immutable Headers in this runtime,
-  // and vinext's RSC route finalizer mutates response headers (e.g. Vary),
-  // which throws ("Can't modify immutable headers") if we return it directly.
+  // Re-wrap: a raw fetch() Response carries immutable Headers, and Next's RSC
+  // route finalizer mutates response headers (e.g. Vary), which throws
+  // ("Can't modify immutable headers") if we return the upstream Response directly.
   return new Response(upstream.body, {
     status: upstream.status,
     statusText: upstream.statusText,

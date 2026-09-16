@@ -1,26 +1,30 @@
 # Deploying Tomah (Vercel + Supabase)
 
-This monorepo hosts three deployables:
+This monorepo hosts three deployables, all served under **one domain** —
+`tomah.vercel.app` (or your custom domain once you attach one to the
+`tomah` project) — via three Vercel projects wired together with rewrites:
 
-| App               | Path              | What it is                              | Vercel project    |
-| ----------------- | ----------------- | --------------------------------------- | ----------------- |
-| Storefront        | `apps/storefront` | Customer site (Vite / `vinext`)         | `tomah-storefront`|
-| Admin API         | `apps/api`        | Express REST API as one serverless fn   | `tomah-api`       |
-| Admin dashboard   | `apps/web`        | React + Vite SPA                        | `tomah-admin`     |
+| App               | Path              | What it is                     | Vercel project | Serves at                          |
+| ----------------- | ----------------- | ------------------------------- | --------------- | ----------------------------------- |
+| Storefront        | `apps/storefront` | Customer site (Next.js)         | `tomah`          | `tomah.vercel.app/` (owns the domain) |
+| Admin dashboard   | `apps/web`         | React + Vite SPA                | `tomah-admin`    | `tomah.vercel.app/admin/*` (proxied) |
+| Admin API         | `apps/api`         | Express REST API, one serverless fn | `tomah-api`   | `tomah.vercel.app/api/*`, `/uploads/*` (proxied) |
 
-`packages/db` is the **shared** Prisma schema + client — one Supabase database
-backs every app. Run migrations from **one** place and coordinate schema changes
-with the storefront developer.
+The `tomah` project (storefront) is the **primary** project — it owns the
+domain and reverse-proxies `/admin/*` to `tomah-admin` and `/api/*` +
+`/uploads/*` to `tomah-api` (see `apps/storefront/next.config.ts`
+`rewrites()`). The browser only ever talks to one origin; the other two
+projects' own `*.vercel.app` URLs stay reachable directly too (useful for
+debugging), but end users only ever see the primary domain.
 
-> `apps/storefront` is **not** an npm workspace (React 19, its own lockfile, and
-> it is currently wired for Cloudflare Workers). Moving it onto Vercel is a
-> separate task owned by the storefront developer; this guide covers the admin
-> API + dashboard. The storefront is a pure client of the admin API's
-> `/api/v1/public/*` endpoints — see [`docs/storefront-handover.md`](storefront-handover.md).
-> Its one required production variable is `TOMAH_API_BASE_URL` = the deployed
-> admin API root **including `/api/v1`** (plus `TOMAH_API_MODE=live`). It calls
-> those endpoints server-side through its own proxy, so the admin API's
-> `CORS_ORIGINS` does **not** need the storefront origin.
+`packages/db` is the **shared** Prisma schema + client — one Supabase
+database backs everything. Run migrations from **one** place and coordinate
+schema changes with anyone else touching the storefront or API.
+
+> **Deploy order matters.** `tomah-api` and `tomah-admin` must exist (and be
+> reachable) *before* the first `tomah` (storefront) deploy, because some
+> storefront pages fetch data from the live API at **build time** (static
+> generation). Deploy `tomah-api` → `tomah-admin` → `tomah`, in that order.
 
 ---
 
@@ -49,14 +53,14 @@ npm run db:migrate:deploy   # applies packages/db/prisma/migrations to Supabase
 npm run db:seed             # OPTIONAL — staff users + demo catalogue/orders
 ```
 
-The API build also runs `prisma migrate deploy` on every deploy, so step 2's
-migrate is optional if you deploy the API first. **Seeding is always manual.**
-If you seed, immediately change the demo passwords (`Tomah!2026`) or create real
-ADMIN users and delete the demo ones.
+The API build also runs `prisma migrate deploy` on every deploy (see §3), so
+step 2's migrate is optional if you deploy the API first. **Seeding is always
+manual.** If you seed, immediately change the demo passwords (`Tomah!2026`)
+or create real ADMIN users and delete the demo ones.
 
 ## 3. Vercel project `tomah-api`
 
-- **New Project → import `Tarantulla-Co/tomah`.**
+- **New Project → import `QPA-VAs/tomah`.**
 - **Root Directory:** `apps/api` — tick *“Include source files outside of the
   Root Directory”* (monorepo install needs the repo root).
 - **Framework preset:** Other. Build/install commands are already defined in
@@ -74,10 +78,10 @@ ADMIN users and delete the demo ones.
   | `JWT_REFRESH_SECRET` | another 48+ random bytes |
   | `ACCESS_TOKEN_TTL` | `15m` |
   | `REFRESH_TOKEN_TTL_DAYS` | `30` |
-  | `COOKIE_DOMAIN` | *(empty)* |
+  | `COOKIE_DOMAIN` | *(empty)* — host-only cookie, correct for the single-domain proxy setup |
   | `COOKIE_SECURE` | `true` |
-  | `COOKIE_SAMESITE` | `lax` (proxy setup, §5A) or `none` (§5B) |
-  | `CORS_ORIGINS` | `https://<admin-web-domain>` |
+  | `COOKIE_SAMESITE` | `lax` |
+  | `CORS_ORIGINS` | `https://tomah.vercel.app` (or your custom domain) |
   | `STORAGE_ADAPTER` | `supabase` |
   | `SUPABASE_URL` | `https://<ref>.supabase.co` |
   | `SUPABASE_SERVICE_ROLE_KEY` | service-role secret |
@@ -108,33 +112,81 @@ ADMIN users and delete the demo ones.
   from §3, then commit/push.
 - **Environment variables:** none required (`VITE_API_BASE_URL` defaults to
   `/api/v1`, which the rewrite in `vercel.json` proxies to the API).
-- **Deploy**, open the URL, sign in with an ADMIN account.
+- **Deploy**, then give it a stable alias (e.g. `tomah-admin.vercel.app`).
+- The app is built with `base: "/admin/"` and `<BrowserRouter basename="/admin">`
+  (see `apps/web/vite.config.ts`, `apps/web/src/App.tsx`) so it works correctly
+  both standalone (`tomah-admin.vercel.app` redirects `/` → `/admin`) and
+  proxied under the storefront's domain (§6).
 
-## 5. How the dashboard reaches the API
+## 5. Vercel project `tomah` (storefront — owns the domain)
 
-**A. Proxy (default — recommended).** `apps/web/vercel.json` rewrites
-`/api/*` and `/uploads/*` to the API deployment. The browser only ever talks to
-the dashboard origin, so the refresh-token cookie is first-party. Keep
-`COOKIE_SAMESITE=lax`.
+- Import the **same repo**. **Root Directory:** `apps/storefront`. It is *not*
+  an npm workspace member — it has its own `package.json`/lockfile, so no
+  "include outside files" toggle is needed.
+- **Framework preset:** Next.js (auto-detected).
+- **Node.js version:** 20.x.
+- **Environment variables:**
 
-**B. Direct cross-origin.** Remove the two proxy rewrites from
-`apps/web/vercel.json`, set `VITE_API_BASE_URL=https://tomah-api.vercel.app/api/v1`
-in the `tomah-admin` project, and on the API set `COOKIE_SAMESITE=none` +
-`COOKIE_SECURE=true` + `CORS_ORIGINS=https://<dashboard-origin>`. Simpler wiring;
-Safari caps the cookie lifetime to 7 days (refresh rotation absorbs this).
+  | Var | Value |
+  | --- | --- |
+  | `TOMAH_API_MODE` | `live` |
+  | `TOMAH_API_BASE_URL` | `https://tomah-api.vercel.app/api/v1` (real alias from §3, **including `/api/v1`**) |
+  | `TOMAH_PUBLIC_SITE_URL` | `https://tomah.vercel.app` (or your custom domain) |
+  | `TOMAH_ADMIN_ORIGIN` | only set if `tomah-admin`'s alias differs from the `https://tomah-admin.vercel.app` default baked into `next.config.ts` |
+  | `TOMAH_API_ORIGIN` | only set if `tomah-api`'s alias differs from the `https://tomah-api.vercel.app` default |
 
-## 6. Post-deploy checklist
+- **Deploy**, then set this project's alias/domain to the one you want
+  customers to use (e.g. `tomah.vercel.app`, or a custom domain).
+- **Smoke test:** open the domain root (storefront home page), then
+  `/admin` (should reach the admin login screen), then sign in and confirm
+  the network tab shows `/api/v1/auth/login` succeeding against the same
+  origin.
 
-- [ ] `/api/v1/healthz` and `/readyz` green.
-- [ ] Sign in to the dashboard; the network tab shows `POST /api/v1/auth/login`
-      setting the `tomah_rt` cookie, and a later `POST /api/v1/auth/refresh` 200.
+## 6. How the pieces talk to each other
+
+- **Storefront → API (server-side).** `apps/storefront/app/api/storefront/public/[...path]/route.ts`
+  forwards requests to `TOMAH_API_BASE_URL` directly, server-to-server. Not
+  affected by any rewrite.
+- **Browser → admin dashboard.** The browser requests `tomah.vercel.app/admin/*`;
+  the `tomah` project's `next.config.ts` rewrite proxies that (transparently,
+  URL bar unchanged) to `tomah-admin`'s own `/admin/*`.
+- **Browser → API, from the admin dashboard.** The dashboard's JS calls
+  root-relative `/api/v1/...` and `/uploads/...`. Since the browser is on
+  `tomah.vercel.app`, those requests hit the `tomah` project too, which
+  proxies them to `tomah-api`. This makes the refresh-token cookie
+  first-party to `tomah.vercel.app` — keep `COOKIE_SAMESITE=lax` and
+  `COOKIE_DOMAIN` empty.
+
+## 7. Push-to-deploy: what to enable
+
+- **Vercel.** Nothing extra beyond importing each of the 3 projects via
+  *Add New → Project → Import Git Repository* in the Vercel dashboard — that
+  flow installs Vercel's GitHub App on the repo and wires up Git integration
+  automatically. After that, every push to `main` auto-deploys to
+  Production for the project(s) whose Root Directory contains changed files,
+  and every other branch/PR gets its own Preview Deployment. Check each
+  project's **Settings → Git → Production Branch** is `main`.
+- **Supabase.** There is no separate Supabase↔GitHub integration to enable in
+  this setup — schema changes ship as Prisma migrations committed to
+  `packages/db/prisma/migrations`, and `apps/api/vercel.json`'s
+  `buildCommand` runs `prisma migrate deploy` against Supabase on **every**
+  `tomah-api` deploy. Push a migration → push to `main` → `tomah-api`
+  redeploys → migration applies automatically.
+
+## 8. Post-deploy checklist
+
+- [ ] `tomah-api.vercel.app/api/v1/healthz` and `/readyz` green.
+- [ ] `tomah.vercel.app/admin` reaches the login screen; signing in shows
+      `POST /api/v1/auth/login` setting the `tomah_rt` cookie, and a later
+      `POST /api/v1/auth/refresh` 200.
 - [ ] Create a product and upload an image — confirm the image URL points at
-      `…supabase.co/storage/v1/object/public/product-images/…` and renders.
+      `…supabase.co/storage/v1/object/public/product-images/…` and renders
+      both in the admin dashboard and on the storefront.
 - [ ] Replace demo staff accounts with real ones.
-- [ ] Custom domains on both Vercel projects; update `CORS_ORIGINS` /
-      `apps/web/vercel.json` to match.
+- [ ] Attach a custom domain to the `tomah` project if you have one; update
+      `TOMAH_PUBLIC_SITE_URL` and `CORS_ORIGINS` to match.
 
-## 7. Known MVP limitations
+## 9. Known MVP limitations
 
 - Cold starts of ~1–2 s on the first API request after idle.
 - No background jobs / cron. Derived states (`OVERDUE`, `EXPIRED`) are computed
@@ -145,8 +197,10 @@ Safari caps the cookie lifetime to 7 days (refresh rotation absorbs this).
 - Real accounting sync is still a stub (`ACCOUNTING_ADAPTER=noop`). Stripe
   collection is fully wired (`PAYMENT_PROVIDER=stripe`); `manual` stays
   available as a no-account fallback.
+- Storefront pages that fetch data at build time need `tomah-api` reachable
+  during the `tomah` project's build — see the deploy-order note at the top.
 
-## 8. Local development — admin (API + dashboard)
+## 10. Local development — admin (API + dashboard)
 
 ```bash
 docker compose up -d db
@@ -157,8 +211,11 @@ cp apps/api/.env.example    apps/api/.env
 cp apps/web/.env.example    apps/web/.env
 npm run db:migrate
 npm run db:seed
-npm run dev            # API on :4000, dashboard on :5173
+npm run dev            # API on :4000, dashboard on :5173/admin
 ```
+
+The dashboard now serves under `/admin` locally too (matching production) —
+open `http://localhost:5173/admin`.
 
 With `apps/api/.env` left at its default `PAYMENT_PROVIDER=manual`, checkout
 works with zero external accounts — the storefront's "Simulate payment
@@ -189,13 +246,12 @@ success (dev only)" button calls `POST /public/checkout/:ref/confirm-dev`.
    render on a supporting browser/device over HTTPS — they won't appear on
    plain `http://localhost`.
 
-## 9. Local development — storefront
+## 11. Local development — storefront
 
-The storefront needs **Node ≥ 22.13** (the admin apps need only ≥ 20) and is
-not an npm workspace, so it gets its own install:
+The storefront is a standard Next.js app and is not an npm workspace member,
+so it gets its own install:
 
 ```bash
-nvm install 22 && nvm use 22    # or any Node >=22.13 manager
 cd apps/storefront
 npm install
 cp .env.example .env
@@ -209,13 +265,13 @@ TOMAH_API_BASE_URL=http://localhost:4000/api/v1
 TOMAH_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
-Then, with the admin API running (§8) and the storefront's own DB-free:
+Then, with the admin API running (§10):
 
 ```bash
 npm run dev
 ```
 
-Open the printed local URL (typically `http://localhost:3000`) — browse
-`/products` (seeded catalogue), add the maple syrup to cart, and check out.
-Leave `TOMAH_API_MODE=mock` (the default) to run the storefront standalone
-against its built-in fixtures instead, with no API required.
+Open `http://localhost:3000` — browse `/products` (seeded catalogue), add the
+maple syrup to cart, and check out. Leave `TOMAH_API_MODE=mock` (the default)
+to run the storefront standalone against its built-in fixtures instead, with
+no API required.
