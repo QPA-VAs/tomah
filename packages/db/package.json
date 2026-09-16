@@ -18,6 +18,7 @@
     "migrate:deploy": "prisma migrate deploy",
     "reset": "prisma migrate reset",
     "seed": "tsx prisma/seed.ts",
+    "create-admin": "tsx prisma/create-admin.ts",
     "studio": "prisma studio",
     "build": "prisma generate && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
