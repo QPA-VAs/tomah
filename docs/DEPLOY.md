@@ -31,11 +31,16 @@ schema changes with anyone else touching the storefront or API.
 ## 1. Supabase
 
 1. **Create a project.** Save the database password, project ref (`<ref>`), and region.
-2. **Connection strings** — Project Settings → Database → *Connection string*:
+2. **Connection strings** — use the *Connect* dialog (Project Settings → Database, or the "Connect" button in the dashboard header):
    - **Transaction pooler** (port `6543`) → this is `DATABASE_URL`.
      Append `?pgbouncer=true&connection_limit=1`.
-   - **Direct connection** (port `5432`) → this is `DIRECT_URL` (used only by
-     `prisma migrate`).
+   - **Session pooler** (port `5432`, host `*.pooler.supabase.com`) → this is
+     `DIRECT_URL` (used only by `prisma migrate`). **Do not** use the plain
+     "Direct connection" string (`db.<ref>.supabase.co:5432`) for this — that
+     host is IPv6-only and Vercel's build containers have no IPv6 egress, so
+     `prisma migrate deploy` fails there with `P1001: Can't reach database
+     server`. The session pooler is IPv4-compatible and behaves like a direct
+     connection for migrations (unlike the transaction pooler).
 3. **Storage** — Storage → New bucket → name `product-images` → **Public bucket: ON**.
 4. **API credentials** — Project Settings → API:
    - *Project URL* → `SUPABASE_URL`
@@ -72,8 +77,8 @@ or create real ADMIN users and delete the demo ones.
   | Var | Value |
   | --- | --- |
   | `NODE_ENV` | `production` |
-  | `DATABASE_URL` | Supabase **pooler** URL + `?pgbouncer=true&connection_limit=1` |
-  | `DIRECT_URL` | Supabase **direct** URL |
+  | `DATABASE_URL` | Supabase **transaction pooler** URL (port 6543) + `?pgbouncer=true&connection_limit=1` |
+  | `DIRECT_URL` | Supabase **session pooler** URL (port 5432, `*.pooler.supabase.com` — not `db.<ref>.supabase.co`, see §1) |
   | `JWT_ACCESS_SECRET` | 48+ random bytes (`node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`) |
   | `JWT_REFRESH_SECRET` | another 48+ random bytes |
   | `ACCESS_TOKEN_TTL` | `15m` |
