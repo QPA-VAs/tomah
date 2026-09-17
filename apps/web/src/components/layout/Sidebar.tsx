@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
-import { DELIVERED_THROUGH_PHASE, visibleNav } from "../../lib/nav";
+import { visibleNav } from "../../lib/nav";
 import styles from "./Sidebar.module.css";
 
 export function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () => void }) {
@@ -34,16 +34,11 @@ export function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () =>
               >
                 <span className={styles.dot} aria-hidden />
                 <span>{item.label}</span>
-                {item.phase > DELIVERED_THROUGH_PHASE && (
-                  <span className={styles.phase}>P{item.phase}</span>
-                )}
               </NavLink>
             ))}
           </div>
         ))}
       </nav>
-
-      <div className={styles.foot}>Phase 3 · Wholesale Accounts</div>
     </aside>
   );
 }

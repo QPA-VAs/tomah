@@ -503,7 +503,7 @@ export function InvoiceDetailPage() {
           {inv.accounting.error && <Row label="Error" value={<span style={{ color: "var(--status-danger-fg)" }}>{inv.accounting.error}</span>} />}
           {inv.accounting.status === "NOT_SYNCED" && (
             <p className="muted" style={{ fontSize: "var(--text-sm)", marginTop: "var(--space-2)" }}>
-              No accounting adapter is configured. Paid invoices push automatically once one is wired in Phase 8.
+              No accounting adapter is configured. Configure one in Settings → Accounting sync; paid invoices will then push automatically.
             </p>
           )}
         </div>

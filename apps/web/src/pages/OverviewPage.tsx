@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { apiGet, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { ROLE_LABELS, type OverviewResponse } from "../lib/types";
 import { Badge } from "../components/ui/Badge";
 
 export function OverviewPage() {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +53,6 @@ export function OverviewPage() {
                     <th>Item</th>
                     <th>Count</th>
                     <th>Status</th>
-                    <th>Delivered in</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -60,35 +60,33 @@ export function OverviewPage() {
                     label="Wholesale applications awaiting review"
                     count={data.actionQueue.pendingWholesaleApplications}
                     status="Pending"
-                    phase="Phase 3"
                   />
                   <QueueRow
                     label="Open quotes (requested / draft / sent)"
                     count={data.actionQueue.openQuotes}
                     status="Draft"
-                    phase="Phase 4"
                   />
                   <QueueRow
                     label="Unpaid invoices (sent / overdue)"
                     count={data.actionQueue.unpaidInvoices}
                     status="Sent"
-                    phase="Phase 4"
                   />
                   <QueueRow
                     label="Retail orders to ship"
                     count={data.actionQueue.ordersToShip}
                     status="Processing"
-                    phase="Phase 5"
                   />
                 </tbody>
               </table>
             </div>
           </section>
 
-          <p className="muted" style={{ fontSize: "var(--text-xs)" }}>
-            Phase 1 shows operational counts only. Revenue by channel, top
-            products, and other role-scoped reports arrive in Phase 8.
-          </p>
+          {hasRole("ADMIN") && (
+            <p className="muted" style={{ fontSize: "var(--text-xs)" }}>
+              Revenue by channel, top products, and other role-scoped reports
+              are available under <Link to="/settings?tab=reports">Settings → Reports</Link>.
+            </p>
+          )}
         </>
       )}
     </div>
@@ -110,12 +108,10 @@ function QueueRow({
   label,
   count,
   status,
-  phase,
 }: {
   label: string;
   count: number;
   status: string;
-  phase: string;
 }) {
   return (
     <tr>
@@ -126,7 +122,6 @@ function QueueRow({
       <td>
         <Badge tone="pending">{status}</Badge>
       </td>
-      <td className="muted">{phase}</td>
     </tr>
   );
 }
