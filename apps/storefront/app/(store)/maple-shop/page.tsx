@@ -1,145 +1,98 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, ArrowUpRight, ShoppingBag, Star } from 'lucide-react';
+import { Leaf, ShoppingCart, Truck } from 'lucide-react';
 import { api } from '@/lib/api';
-import { FaqAccordion } from '@/components/storefront/faq-accordion';
-import { formatMoney } from '@/lib/money';
+import { CATEGORY_META } from '@/lib/categories';
+import { MapleShopCatalogue, type MapleTypeFilter } from '@/components/storefront/maple-shop-catalogue';
+import type { ProductSummary } from '@/lib/api/types';
+
+const site = process.env.TOMAH_PUBLIC_SITE_URL || 'https://tomah.vercel.app';
+const PAGE_SIZE = 9;
+
+// The maple catalogue is small and stable — these three product lines are the
+// only ones the business sells retail. Sidebar labels come from this list,
+// but a type only renders (and only counts) if a matching product is
+// actually present in the fetched catalogue.
+const MAPLE_TYPES: { slug: string; label: string }[] = [
+  { slug: 'maple-syrup', label: 'Maple Syrup' },
+  { slug: 'maple-sugar', label: 'Maple Sugar' },
+  { slug: 'maple-butter', label: 'Maple Butter' },
+];
 
 export const metadata: Metadata = {
-  title: 'Maple Shop | Tomah International',
-  description: 'Shop organic maple syrup, sugar and butter online — shipped direct, no minimums.',
+  title: 'Maple Products | Tomah International',
+  description: 'Organic maple syrup, sugar and butter — order online, no minimums, ships direct.',
+  alternates: { canonical: `${site}/maple-shop` },
 };
 
-export default async function MapleShop() {
-  const [maple, faqs, testimonials, recipes] = await Promise.all([
-    api.listProducts({ category: 'MAPLE_PRODUCTS', pageSize: 6 }),
-    api.getFaqs(),
-    api.getTestimonials(),
-    api.getRecipes(),
-  ]);
+const matchesStock = (p: ProductSummary, stock: string[]) =>
+  stock.length === 0 || stock.includes(p.inStock ? 'in' : 'coming');
+
+export default async function MapleShop({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; sort?: string; type?: string; stock?: string | string[]; page?: string }>;
+}) {
+  const sp = await searchParams;
+  const stock = sp.stock ? (Array.isArray(sp.stock) ? sp.stock : [sp.stock]) : [];
+  const page = Math.max(1, Number(sp.page) || 1);
+
+  // Fetch the full maple catalogue (search + sort handled by the real API);
+  // type/availability/pagination are applied here since they aren't native
+  // catalogue-service query params.
+  const data = await api.listProducts({ category: 'MAPLE_PRODUCTS', q: sp.q, sort: sp.sort, pageSize: 48 });
+  const searched = data.items;
+
+  const types: MapleTypeFilter[] = MAPLE_TYPES
+    .filter((t) => searched.some((p) => p.slug === t.slug))
+    .map((t) => ({ ...t, count: searched.filter((p) => p.slug === t.slug && matchesStock(p, stock)).length }));
+
+  const byType = sp.type ? searched.filter((p) => p.slug === sp.type) : searched;
+  const stockCounts = {
+    inStock: byType.filter((p) => p.inStock).length,
+    comingSoon: byType.filter((p) => !p.inStock).length,
+  };
+
+  const filtered = byType.filter((p) => matchesStock(p, stock));
+  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const products = await Promise.all(pageItems.map((p) => api.getProduct(p.slug)));
+
+  const meta = CATEGORY_META.MAPLE_PRODUCTS;
 
   return (
-    <main id="main">
-      <section className="home-hero">
-        <div className="shell home-hero-grid">
-          <div className="home-hero-copy">
-            <p className="home-hero-eyebrow"><ArrowUpRight size={15} /> The Tomah maple shop</p>
-            <h1 className="home-hero-title">Pure maple syrup.<br /><em>Straight from the tap.</em></h1>
-            <p className="home-hero-lede">Organic maple syrup, sugar and butter from trusted Canadian producers — ordered online, shipped direct to your door, no minimums.</p>
-            <div className="home-hero-actions">
-              <a className="pill pill-solid" href="#shop">Shop maple products</a>
-              <Link className="pill pill-outline" href="/recipes">Get recipe inspiration</Link>
+    <main id="main" className="store-main store-main--flush">
+      {/* ------------------------- compact maple shop banner ------------------------- */}
+      <section className="maple-banner">
+        <div className="shell maple-banner-grid">
+          <div className="maple-banner-copy">
+            <p className="maple-banner-crumb"><Link href="/">Home</Link> / <span>Maple Shop</span></p>
+            <h1>{meta.label}</h1>
+            <p>{meta.heroBlurb}</p>
+            <div className="maple-banner-trust">
+              <span><Leaf size={18} /><span><b>100% Organic</b>Pure &amp; Natural</span></span>
+              <span><Truck size={18} /><span><b>Ships Worldwide</b>Direct to Your Door</span></span>
+              <span><ShoppingCart size={18} /><span><b>No Minimum Order</b>Shop with Confidence</span></span>
             </div>
           </div>
-          <div className="home-hero-visual">
-            <Image src="/images/maple-syrup-lifestyle.jpg" alt="Tomah organic maple syrup bottle beside pancakes and a serving jar" fill sizes="(max-width: 900px) 100vw, 46vw" priority />
-            <div className="home-hero-badge">
-              <ShoppingBag size={18} />
-              <div><strong>100% organic</strong><span>Canadian maple, ships direct</span></div>
-              <a href="#shop">Shop now</a>
-            </div>
+          <div className="maple-banner-media">
+            <Image src="/images/maple-syrup-bottle-cutout.png" alt="Tomah pure maple syrup bottle" fill sizes="(max-width: 900px) 60vw, 420px" style={{ objectFit: 'contain' }} priority />
           </div>
         </div>
       </section>
 
-      <section className="section shell" id="shop">
-        <div className="section-heading">
-          <div><p className="eyebrow">Order online</p><h2>Pure maple goodness,<br />crafted naturally.</h2></div>
-          <p>No minimums, no wholesale accounts — just real maple syrup, sugar and butter shipped straight to your door.</p>
-        </div>
-        <div className="store-grid">
-          {maple.items.map((p) => (
-            <article className="store-card" key={p.id}>
-              <Link className="store-card-media" href={`/products/${p.slug}`}>
-                <Image src={p.image.url} alt={p.image.alt} width={700} height={700} />
-              </Link>
-              <div className="store-card-body">
-                <h2><Link href={`/products/${p.slug}`}>{p.name}</Link></h2>
-                <p>{p.shortDescription}</p>
-                <div className="store-card-bottom">
-                  <span>From {formatMoney(p.priceFrom, p.currency)}</span>
-                  <Link href={`/products/${p.slug}`}>View product →</Link>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="maple section shell">
-        <div className="maple-image-wrap"><Image src="/images/maple-pancakes.jpg" alt="Maple syrup poured over a stack of pancakes" fill sizes="(max-width: 800px) 100vw, 50vw" /><span>Tapped, boiled, bottled</span></div>
-        <div className="maple-copy">
-          <p className="eyebrow">From tap to table</p>
-          <h2>Real maple, the traditional way.</h2>
-          <p>Our syrup, sugar and butter are made from 100% pure maple sap — tapped and boiled by trusted Canadian producers, with no additives or shortcuts. Every bottle is graded for flavour before it ships.</p>
-          <Link className="button button-navy" href="/products/maple-syrup">Shop pure maple syrup <ArrowRight size={18} /></Link>
-        </div>
-      </section>
-
-      {testimonials.items.length > 0 && (
-        <section className="testimonials-home section shell">
-          <div className="faq-home-heading">
-            <p className="eyebrow" style={{ justifyContent: 'center' }}>What customers say</p>
-            <h2>Trusted by home cooks and bakers.</h2>
-          </div>
-          <div className="testimonial-grid">
-            {testimonials.items.map((t) => (
-              <article className="testimonial-card" key={t.id}>
-                {t.rating != null && (
-                  <div className="testimonial-stars" aria-label={`${t.rating} out of 5 stars`}>
-                    {Array.from({ length: 5 }, (_, i) => <Star key={i} size={16} fill={i < t.rating! ? 'currentColor' : 'none'} />)}
-                  </div>
-                )}
-                <p className="testimonial-quote">&ldquo;{t.quote}&rdquo;</p>
-                <p className="testimonial-author">{t.name}{t.company && <span> · {t.company}</span>}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {recipes.items.length > 0 && (
-        <section className="section shell">
-          <div className="section-heading">
-            <div><p className="eyebrow">Made with Tomah maple</p><h2>Recipes worth savouring.</h2></div>
-            <p>Ideas for putting your maple syrup, sugar and butter to good use.</p>
-          </div>
-          <div className="store-grid">
-            {recipes.items.slice(0, 3).map((r) => (
-              <article className="store-card" key={r.id}>
-                <Link className="store-card-media" href={`/recipes/${r.slug}`}>
-                  <Image src={r.image.url} alt={r.image.alt} width={700} height={700} />
-                </Link>
-                <div className="store-card-body">
-                  <h2><Link href={`/recipes/${r.slug}`}>{r.title}</Link></h2>
-                  <p>{r.excerpt}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {faqs.items.length > 0 && (
-        <section className="faq-home section shell" id="faq">
-          <div className="faq-home-heading">
-            <p className="eyebrow" style={{ justifyContent: 'center' }}>Answers first</p>
-            <h2>Frequently asked questions.</h2>
-            <p>The most common questions before you order.</p>
-          </div>
-          <FaqAccordion items={faqs.items.slice(0, 6)} />
-          <Link className="text-link faq-home-more" href="/faq">See all FAQs <ArrowRight size={18} /></Link>
-        </section>
-      )}
-
-      <section className="quote section shell">
-        <div><p className="eyebrow light">Sourcing more than maple?</p><h2>We also supply poultry, pork, seafood, grains and produce — wholesale.</h2></div>
-        <div>
-          <p>Tomah International supplies retailers, distributors and foodservice buyers with a full range of proteins, grains and produce, priced by quote.</p>
-          <Link className="button button-gold" href="/products">Browse the wholesale range <ArrowRight size={18} /></Link>
-        </div>
-      </section>
+      {/* ------------------------------ shop catalogue -------------------------------- */}
+      <div className="shell">
+        <MapleShopCatalogue
+          products={products}
+          total={searched.length}
+          totalMatching={filtered.length}
+          types={types}
+          stockCounts={stockCounts}
+          page={page}
+          pageSize={PAGE_SIZE}
+        />
+      </div>
     </main>
   );
 }

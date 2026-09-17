@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { api, type Category } from '@/lib/api';
 import { Catalogue } from '@/components/storefront/catalogue';
 import { CategoryHero } from '@/components/storefront/category-hero';
@@ -23,6 +23,8 @@ export default async function CategoryPage({
 }) {
   const { category } = await params;
   if (!CATEGORY_ORDER.includes(category as Category)) notFound();
+  // The maple product line has its own dedicated retail catalogue.
+  if (category === 'MAPLE_PRODUCTS') redirect('/maple-shop');
   const q = await searchParams;
   const data = await api.listProducts({
     category: category as Category,

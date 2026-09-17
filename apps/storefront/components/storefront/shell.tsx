@@ -1,6 +1,7 @@
 'use client';
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { ArrowRight, Mail, MapPin, Package, Phone, ShoppingBag } from 'lucide-react';
 import { MobileNavigation } from '../mobile-navigation';
 import { HeaderSearch } from './header-search';
@@ -27,6 +28,8 @@ function CartLink() {
 }
 
 function Frame({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isActive = (href: string) => href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
   return (
     <div className="storefront">
       <a className="shop-skip" href="#main">Skip to content</a>
@@ -36,7 +39,7 @@ function Frame({ children }: { children: React.ReactNode }) {
         </Link>
         <nav aria-label="Store navigation">
           {NAV_LINKS.map(([label, href]) => (
-            <Link key={href} href={href}>{label}</Link>
+            <Link key={href} href={href} className={isActive(href) ? 'active' : ''} aria-current={isActive(href) ? 'page' : undefined}>{label}</Link>
           ))}
         </nav>
         <div className="store-actions">
