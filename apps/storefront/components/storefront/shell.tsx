@@ -1,16 +1,18 @@
 'use client';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Mail, MapPin, Phone, ShoppingBag } from 'lucide-react';
+import { ArrowRight, Mail, MapPin, Package, Phone, ShoppingBag } from 'lucide-react';
 import { MobileNavigation } from '../mobile-navigation';
-import { CATEGORY_ORDER, CATEGORY_META } from '@/lib/categories';
+import { HeaderSearch } from './header-search';
 import { StoreCartProvider, useStoreCart } from './cart-context';
 
 const NAV_LINKS: [string, string][] = [
   ['Home', '/'],
-  ['Recipes', '/recipes'],
+  ['Maple Shop', '/maple-shop'],
+  ['Products', '/products'],
   ['Wholesale', '/wholesale'],
-  ['Track order', '/orders/track'],
+  ['About Us', '/about'],
+  ['Contact', '/contact'],
 ];
 
 function CartLink() {
@@ -30,7 +32,7 @@ function Frame({ children }: { children: React.ReactNode }) {
       <a className="shop-skip" href="#main">Skip to content</a>
       <header className="store-header">
         <Link href="/" className="store-logo">
-          <Image src="/images/tomah-logo-navy.jpg" alt="Tomah International" width={82} height={64} />
+          <Image src="/images/tomah-logo-navy.jpg" alt="Tomah International" width={82} height={64} priority />
         </Link>
         <nav aria-label="Store navigation">
           {NAV_LINKS.map(([label, href]) => (
@@ -38,41 +40,42 @@ function Frame({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
         <div className="store-actions">
-          <a className="store-wholesale-cta" href="/quote">
-            Request a wholesale quote <ArrowRight size={15} />
-          </a>
+          <HeaderSearch />
+          <Link className="store-account-link" href="/orders/track" aria-label="Track your order">
+            <Package size={19} />
+          </Link>
           <CartLink />
-          <MobileNavigation links={NAV_LINKS} actionLabel="Request a wholesale quote" actionHref="/quote" />
+          <a className="store-wholesale-cta" href="/quote">
+            Request a Quote <ArrowRight size={15} />
+          </a>
+          <MobileNavigation links={NAV_LINKS} actionLabel="Request a Quote" actionHref="/quote" />
         </div>
       </header>
       {children}
       <footer className="store-footer">
         <div className="store-footer-brand">
           <Image src="/images/tomah-logo-navy.jpg" alt="Tomah International" width={70} height={64} />
-          <p>Global food trading &amp; distribution. Quality food, trusted sources, delivered worldwide.</p>
+          <p>Connecting Quality Food with the World.</p>
         </div>
         <div className="store-footer-col">
-          <h3>Shop</h3>
-          <Link href="/products">All products</Link>
-          {CATEGORY_ORDER.map((c) => (
-            <Link key={c} href={`/categories/${c}`}>{CATEGORY_META[c].label}</Link>
+          <h3>Explore</h3>
+          {NAV_LINKS.map(([label, href]) => (
+            <Link key={href} href={href}>{label}</Link>
           ))}
         </div>
         <div className="store-footer-col">
           <h3>Support</h3>
-          <Link href="/faq">FAQ</Link>
-          <Link href="/orders/track">Track an order</Link>
-          <Link href="/quote">Request a quote</Link>
-          <Link href="/wholesale/apply">Apply for a wholesale account</Link>
-          <Link href="/legal/privacy">Privacy</Link>
-          <Link href="/legal/terms">Terms</Link>
+          <Link href="/faq">FAQs</Link>
+          <Link href="/legal/returns">Shipping</Link>
           <Link href="/legal/returns">Returns</Link>
+          <Link href="/legal/privacy">Privacy Policy</Link>
+          <Link href="/legal/terms">Terms &amp; Conditions</Link>
         </div>
         <div className="store-footer-col">
           <h3>Contact</h3>
-          <a href="mailto:info@tomahinc.com"><Mail size={15} /> info@tomahinc.com</a>
-          <a href="tel:+14074055021"><Phone size={15} /> +1 407 405 5021</a>
-          <span><MapPin size={15} /> 7901 4th St N, Ste 31326, St. Petersburg, FL 33702</span>
+          <span><MapPin size={15} /> <span>7901 4th St N, Ste 31326, St. Petersburg, FL 33702, USA</span></span>
+          <a href="mailto:info@tomahinc.com"><Mail size={15} /> <span>info@tomahinc.com</span></a>
+          <a href="tel:+14074055021"><Phone size={15} /> <span>+1 407 405 5021</span></a>
         </div>
       </footer>
     </div>
