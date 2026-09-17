@@ -89,8 +89,8 @@ export function ProductsListPage() {
         <div>
           <h1 className="page-title">Products</h1>
           <p className="muted">
-            {resp ? `${resp.pagination.total} products` : "Catalogue"} · retail &amp; wholesale pricing,
-            stock, categories
+            {resp ? `${resp.pagination.total} products` : "Catalogue"} · new products are Maple Shop
+            items only — wholesale categories are quote-only and managed outside the admin
           </p>
         </div>
         {canEdit && <Button onClick={() => navigate("/products/new")}>New product</Button>}

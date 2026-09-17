@@ -41,6 +41,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     throw e;
   }
   const meta = CATEGORY_META[p.category];
+  // Wholesale categories are quote-only and have no browsable detail page.
+  if (!meta.retail) notFound();
   const Icon = meta.icon;
   const schema = {
     '@context': 'https://schema.org',
@@ -50,23 +52,21 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     image: p.images.map((i) => new URL(i.url, site).toString()),
     sku: p.variants[0]?.sku,
     brand: { '@type': 'Brand', name: 'Tomah' },
-    offers: meta.retail
-      ? p.variants
-          .filter((v) => v.available)
-          .map((v) => ({
-            '@type': 'Offer',
-            price: v.price,
-            priceCurrency: v.currency,
-            availability: 'https://schema.org/InStock',
-            sku: v.sku,
-          }))
-      : undefined,
+    offers: p.variants
+      .filter((v) => v.available)
+      .map((v) => ({
+        '@type': 'Offer',
+        price: v.price,
+        priceCurrency: v.currency,
+        availability: 'https://schema.org/InStock',
+        sku: v.sku,
+      })),
   };
   return (
     <main id="main" className="store-main">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
       <p className="store-breadcrumb">
-        <Link href="/products">Products</Link> / <Link href={`/categories/${p.category}`}>{meta.label}</Link>
+        <Link href="/maple-shop">Maple Shop</Link> / {p.name}
       </p>
       <div className="store-detail">
         <div>

@@ -13,17 +13,6 @@ export interface CategoryMeta {
   retail: boolean;
 }
 
-/** Display order across the shop (retail first, then wholesale categories). */
-export const CATEGORY_ORDER: Category[] = [
-  'MAPLE_PRODUCTS',
-  'POULTRY',
-  'PORK',
-  'MEATS',
-  'SEAFOOD',
-  'GRAINS',
-  'VEGETABLES_AND_FRIES',
-];
-
 export const CATEGORY_META: Record<Category, CategoryMeta> = {
   MAPLE_PRODUCTS: {
     id: 'MAPLE_PRODUCTS',

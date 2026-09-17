@@ -37,7 +37,7 @@ export function HeaderSearch() {
           event.preventDefault();
           const q = value.trim();
           setOpen(false);
-          router.push(q ? `/products?q=${encodeURIComponent(q)}` : '/products');
+          router.push(q ? `/maple-shop?q=${encodeURIComponent(q)}` : '/maple-shop');
         }}
       >
         <input
@@ -46,8 +46,8 @@ export function HeaderSearch() {
           name="q"
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          placeholder="Search products…"
-          aria-label="Search products"
+          placeholder="Search maple products…"
+          aria-label="Search maple products"
           tabIndex={open ? 0 : -1}
         />
         <button type="submit" aria-label="Submit search" tabIndex={open ? 0 : -1}><Search size={17} /></button>
@@ -56,7 +56,7 @@ export function HeaderSearch() {
         ref={toggle}
         type="button"
         className="store-search-toggle"
-        aria-label={open ? 'Close search' : 'Search products'}
+        aria-label={open ? 'Close search' : 'Search maple products'}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >

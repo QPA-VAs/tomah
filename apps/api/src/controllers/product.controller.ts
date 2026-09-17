@@ -207,7 +207,7 @@ export async function updateProduct(req: Request<{ id: string }, unknown, Update
   if (body.slug !== undefined) data.slug = await uniqueSlug(body.slug || body.name || existing.name, id);
   if (body.sku !== undefined) data.sku = body.sku;
   if (body.barcode !== undefined) data.barcode = body.barcode ?? null;
-  if (body.category !== undefined) data.category = body.category;
+  // category is immutable after creation (see product.schema.ts).
   if (body.shortDescription !== undefined) data.shortDescription = body.shortDescription ?? null;
   if (body.longDescription !== undefined) data.longDescription = body.longDescription ?? null;
   if (body.countryOfOrigin !== undefined) data.countryOfOrigin = body.countryOfOrigin ?? null;

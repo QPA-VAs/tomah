@@ -42,12 +42,16 @@ export type ListProductsQuery = z.infer<typeof listProductsQuery>;
 
 /* --------------------------------- product ------------------------------- */
 
+// New products are Maple Shop retail items only — the six wholesale
+// categories are static/quote-only and are not admin-managed (see
+// docs/DATA_MODEL.md). `categoryEnum` above is kept for reading/filtering
+// pre-existing rows in any of the seven categories.
 export const createProductSchema = z.object({
   name: z.string().trim().min(1).max(200),
   slug: z.string().trim().max(80).optional(),
   sku: z.string().trim().min(1).max(64),
   barcode: z.string().trim().max(64).nullish(),
-  category: categoryEnum,
+  category: z.literal("MAPLE_PRODUCTS"),
   shortDescription: z.string().trim().max(300).nullish(),
   longDescription: z.string().trim().max(5000).nullish(),
   countryOfOrigin: z.string().trim().max(80).nullish(),
@@ -64,7 +68,9 @@ export const createProductSchema = z.object({
 });
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 
-export const updateProductSchema = createProductSchema.partial();
+// Category is immutable after creation — never part of an update, so a
+// legacy non-Maple row can still have its other fields edited safely.
+export const updateProductSchema = createProductSchema.omit({ category: true }).partial();
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 
 /** Manual stock override — always sets stockSource = MANUAL. */

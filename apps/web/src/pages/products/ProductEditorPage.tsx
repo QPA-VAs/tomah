@@ -4,6 +4,7 @@ import { ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import {
   CATEGORY_LABELS,
+  EDITABLE_PRODUCT_CATEGORIES,
   PRODUCT_CATEGORIES,
   createProduct,
   deleteProduct,
@@ -85,7 +86,9 @@ function toPayload(f: FormState, isNew: boolean): ProductWritePayload {
     name: f.name.trim(),
     sku: f.sku.trim(),
     barcode: f.barcode.trim() || null,
-    category: f.category,
+    // Category is set once at creation and is immutable afterwards (the API
+    // rejects it on update) — omit it entirely from update payloads.
+    ...(isNew ? { category: f.category } : {}),
     countryOfOrigin: f.countryOfOrigin.trim() || null,
     certifications: f.certifications,
     shortDescription: f.shortDescription.trim() || null,
@@ -230,10 +233,14 @@ export function ProductEditorPage() {
                 onChange={(e) => set("barcode", e.target.value)} />
             </Field>
 
-            <Field label="Category">
-              <select className="select" value={form.category} disabled={readOnly}
-                onChange={(e) => set("category", e.target.value as ProductCategory)}>
-                {PRODUCT_CATEGORIES.map((c) => (
+            <Field
+              label="Category"
+              hint={isNew
+                ? "New products are Maple Shop items only — wholesale categories are managed through quotes, not here."
+                : "Fixed at creation and can't be changed."}
+            >
+              <select className="select" value={form.category} disabled>
+                {(isNew ? EDITABLE_PRODUCT_CATEGORIES : PRODUCT_CATEGORIES).map((c) => (
                   <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
                 ))}
               </select>

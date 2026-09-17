@@ -120,7 +120,7 @@ export default async function Home() {
         <p className="section-lede">From poultry and meats to seafood, grains and vegetables, we connect quality food products with global opportunities.</p>
         <div className="category-grid">{HOME_CATEGORY_ORDER.map((id) => {
           const meta = CATEGORY_META[id];
-          const href = `/categories/${id}`;
+          const href = `/quote?category=${id}`;
           const image = CATEGORY_IMAGES[id];
           const Icon = meta.icon;
           return (

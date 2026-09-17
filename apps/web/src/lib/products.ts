@@ -11,6 +11,12 @@ export const PRODUCT_CATEGORIES = [
 ] as const;
 export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
 
+// New products can only be created under Maple Products — the six wholesale
+// categories are static/quote-only and aren't admin-managed. Kept as its own
+// list (rather than restricting PRODUCT_CATEGORIES) so the list view can
+// still filter/label any pre-existing rows in the other six categories.
+export const EDITABLE_PRODUCT_CATEGORIES = ["MAPLE_PRODUCTS"] as const;
+
 export const CATEGORY_LABELS: Record<ProductCategory, string> = {
   POULTRY: "Poultry",
   PORK: "Pork",

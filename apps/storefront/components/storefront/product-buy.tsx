@@ -2,24 +2,16 @@
 import { useState } from 'react';
 import type { ProductDetail } from '@/lib/api/types';
 import { formatMoney } from '@/lib/money';
-import { CATEGORY_META } from '@/lib/categories';
 import { useStoreCart } from './cart-context';
 
+// Only ever rendered for retail (Maple Shop) products — wholesale categories
+// are quote-only and have no product detail page to reach this from.
 export function ProductBuy({ product }: { product: ProductDetail }) {
   const available = product.variants.filter((v) => v.available);
   const [selected, setSelected] = useState(available[0]?.id || product.variants[0]?.id);
   const [added, setAdded] = useState(false);
   const cart = useStoreCart();
   const variant = product.variants.find((v) => v.id === selected);
-
-  if (!CATEGORY_META[product.category].retail) {
-    return (
-      <div className="store-notice">
-        This food category is priced only through an individual quote.{' '}
-        <a href="/quote">Start a quote request →</a>
-      </div>
-    );
-  }
 
   return (
     <div>
